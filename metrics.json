@@ -1,9 +1,0 @@
-{
-  "n_true_threats_final_frame": 5,
-  "n_confirmed_tracks_final_frame": 8,
-  "n_total_tracks_final_frame": 9,
-  "mean_threat_score_on_real_drones": 1.0,
-  "mean_threat_score_on_real_decoys": 9.387337811508727e-47,
-  "n_drone_tracks_evaluated": 5,
-  "n_decoy_tracks_evaluated": 3
-}
