@@ -41,6 +41,19 @@
   }
   button:hover { background: #232d3d; }
   button.active { border-color: var(--confirmed); color: var(--confirmed); }
+  a.back { display: block; color: var(--confirmed); font-size: 12px; text-decoration: none; margin-bottom: 12px; }
+  .ctl { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .ctl label { display: flex; justify-content: space-between; }
+  .ctl b { color: var(--text); }
+  .ctl input { width: 100%; }
+  .toggles { font-size: 12px; color: var(--muted); margin: 6px 0 4px; }
+  .toggles label { display: block; margin: 4px 0; cursor: pointer; }
+  .hint { font-size: 11px; color: var(--muted); margin: 8px 0 14px; }
+  #inspect { margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 11px; display: none; }
+  #inspect div { display: flex; justify-content: space-between; padding: 2px 0; color: var(--muted); }
+  #inspect b { color: var(--text); font-weight: 600; }
+  .track-item { cursor: pointer; }
+  .track-item.sel { outline: 1px solid var(--confirmed); }
   .stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; color: var(--muted); }
   .stat-row b { color: var(--text); font-weight: 600; }
   #track-list { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
@@ -68,11 +81,23 @@
   <h1>Counter-Swarm Fusion</h1>
   <p class="sub">Live multi-sensor fusion + Kalman tracking demo</p>
 
+  <a href="/" class="back">← Project overview</a>
+
   <div class="controls">
     <button id="btn-start">▶ Start</button>
     <button id="btn-stop">⏸ Stop</button>
     <button id="btn-reset">⟲ Reset</button>
   </div>
+
+  <div class="ctl"><label>Drones <b id="v-drones">5</b></label><input type="range" id="in-drones" min="1" max="12" value="5"></div>
+  <div class="ctl"><label>Decoys (birds/clutter) <b id="v-decoys">3</b></label><input type="range" id="in-decoys" min="0" max="10" value="3"></div>
+  <div class="ctl"><label>Speed <b id="v-speed">1x</b></label><input type="range" id="in-speed" min="1" max="5" value="1"></div>
+  <div class="ctl"><label>Seed <b id="v-seed">7</b></label><input type="range" id="in-seed" min="1" max="99" value="7"></div>
+  <div class="toggles">
+    <label><input type="checkbox" id="tg-truth"> Show ground truth</label>
+    <label><input type="checkbox" id="tg-trails" checked> Trails</label>
+  </div>
+  <p class="hint">Changing a slider restarts the scenario. Click a track to inspect it.</p>
 
   <div class="stat-row"><span>Backend</span><b id="stat-conn">connecting…</b></div>
   <div class="stat-row"><span>Step</span><b id="stat-step">0</b></div>
@@ -80,6 +105,7 @@
   <div class="stat-row"><span>Tentative tracks</span><b id="stat-tentative">0</b></div>
   <div class="stat-row"><span>High-threat (&gt;0.6)</span><b id="stat-threat" style="color:var(--drone)">0</b></div>
 
+  <div id="inspect"></div>
   <div id="track-list"></div>
 </div>
 
@@ -90,169 +116,218 @@
     <div><span class="dot" style="background:var(--asset)"></span>Protected asset</div>
     <div><span class="dot" style="background:var(--confirmed)"></span>Confirmed track</div>
     <div><span class="dot" style="background:var(--tentative)"></span>Tentative track</div>
+    <div><span class="dot" style="background:#3ddc84"></span>Ground truth drone (if shown)</div>
+    <div><span class="dot" style="background:#8e8e93"></span>Ground truth decoy (if shown)</div>
     <div>Label = threat score (0–1)</div>
   </div>
 </div>
 
 <script>
-const API_BASE = ""; // relative — works when served from /demo/ by the same FastAPI app.
-                       // If you open this file directly (file://) instead of via uvicorn,
-                       // set this to "http://localhost:8000".
-const POLL_INTERVAL_MS = 200;
-const WORLD_HALF_EXTENT_M = 2200; // matches the simulator's ~2km approach radius
+const API_BASE = "";
+const WORLD_HALF_EXTENT_M = 2200;
+const sid = sessionStorage.getItem("sid") || Math.random().toString(36).slice(2, 12);
+sessionStorage.setItem("sid", sid);
+const q = `sid=${sid}`;
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const $ = id => document.getElementById(id);
 
-let polling = false;
-let pollHandle = null;
-let dt = 0.5; // seconds per simulation step, matches SwarmScenario
+let polling = false, pollHandle = null, busy = false;
+let dt = 0.5, selected = null, last = { step: 0, tracks: [], truth: [] };
+const trails = {};
 
 function resizeCanvas() {
-  const wrap = document.getElementById("canvas-wrap");
+  const wrap = $("canvas-wrap");
   canvas.width = wrap.clientWidth * devicePixelRatio;
   canvas.height = wrap.clientHeight * devicePixelRatio;
   ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  draw(last);
 }
 window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
 
-// World (east, north metres) -> screen pixels, origin centred, north = up
 function worldToScreen(east, north) {
-  const w = canvas.width / devicePixelRatio;
-  const h = canvas.height / devicePixelRatio;
+  const w = canvas.width / devicePixelRatio, h = canvas.height / devicePixelRatio;
   const scale = Math.min(w, h) / (2 * WORLD_HALF_EXTENT_M);
-  const x = w / 2 + east * scale;
-  const y = h / 2 - north * scale; // screen y grows downward, north should go up
-  return [x, y];
+  return [w / 2 + east * scale, h / 2 - north * scale];
 }
 
 function threatColor(score) {
-  // green (safe) -> orange -> red (high threat)
   const r = Math.round(255 * Math.min(1, score * 1.4));
   const g = Math.round(200 * (1 - score));
   return `rgb(${r}, ${g}, 60)`;
 }
 
-function draw(snapshot) {
-  const w = canvas.width / devicePixelRatio;
-  const h = canvas.height / devicePixelRatio;
+function draw(snap) {
+  last = snap;
+  const w = canvas.width / devicePixelRatio, h = canvas.height / devicePixelRatio;
   ctx.clearRect(0, 0, w, h);
 
-  // background grid
-  ctx.strokeStyle = "#1a212b";
-  ctx.lineWidth = 1;
-  const gridStep = 500; // metres
-  for (let m = -WORLD_HALF_EXTENT_M; m <= WORLD_HALF_EXTENT_M; m += gridStep) {
-    const [x1, y1] = worldToScreen(m, -WORLD_HALF_EXTENT_M);
-    const [x2, y2] = worldToScreen(m, WORLD_HALF_EXTENT_M);
+  ctx.strokeStyle = "#1a212b"; ctx.lineWidth = 1;
+  for (let m = -WORLD_HALF_EXTENT_M; m <= WORLD_HALF_EXTENT_M; m += 500) {
+    let [x1, y1] = worldToScreen(m, -WORLD_HALF_EXTENT_M), [x2, y2] = worldToScreen(m, WORLD_HALF_EXTENT_M);
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    const [x3, y3] = worldToScreen(-WORLD_HALF_EXTENT_M, m);
-    const [x4, y4] = worldToScreen(WORLD_HALF_EXTENT_M, m);
-    ctx.beginPath(); ctx.moveTo(x3, y3); ctx.lineTo(x4, y4); ctx.stroke();
+    [x1, y1] = worldToScreen(-WORLD_HALF_EXTENT_M, m); [x2, y2] = worldToScreen(WORLD_HALF_EXTENT_M, m);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
   }
 
-  // protected asset at origin
   const [ax, ay] = worldToScreen(0, 0);
   ctx.fillStyle = "#f4f4f4";
-  ctx.beginPath();
-  ctx.moveTo(ax, ay - 9); ctx.lineTo(ax + 8, ay + 7); ctx.lineTo(ax - 8, ay + 7);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(ax, ay - 9); ctx.lineTo(ax + 8, ay + 7); ctx.lineTo(ax - 8, ay + 7); ctx.closePath(); ctx.fill();
 
-  // tracks
+  if ($("tg-truth").checked) {
+    (snap.truth || []).forEach(g => {
+      const [x, y] = worldToScreen(g.east_m, g.north_m);
+      ctx.fillStyle = g.is_threat ? "#3ddc84" : "#8e8e93";
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(x - 3, y - 3, 6, 6);
+      ctx.globalAlpha = 1;
+    });
+  }
+
   let confirmed = 0, tentative = 0, highThreat = 0;
-  const listEl = document.getElementById("track-list");
+  const listEl = $("track-list");
   listEl.innerHTML = "";
 
-  (snapshot.tracks || []).forEach(t => {
+  (snap.tracks || []).forEach(t => {
     const [x, y] = worldToScreen(t.position.east_m, t.position.north_m);
     const isConfirmed = t.status === "CONFIRMED";
     if (isConfirmed) confirmed++; else tentative++;
     if (t.threat_score > 0.6) highThreat++;
-
     const color = isConfirmed ? threatColor(t.threat_score) : "#7c8a9a";
 
-    // velocity vector
-    const speedScale = 4;
-    const [vx, vy] = worldToScreen(
-      t.position.east_m + t.velocity.east_mps * speedScale,
-      t.position.north_m + t.velocity.north_mps * speedScale
-    );
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(vx, vy); ctx.stroke();
-
-    // track marker
-    ctx.beginPath();
-    ctx.arc(x, y, isConfirmed ? 9 : 6, 0, 2 * Math.PI);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    if (!isConfirmed) {
-      ctx.setLineDash([2, 2]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+    if ($("tg-trails").checked && trails[t.track_id]) {
+      ctx.strokeStyle = color; ctx.globalAlpha = 0.35; ctx.lineWidth = 1;
+      ctx.beginPath();
+      trails[t.track_id].forEach(([e, n], i) => {
+        const [tx, ty] = worldToScreen(e, n);
+        i ? ctx.lineTo(tx, ty) : ctx.moveTo(tx, ty);
+      });
+      ctx.stroke(); ctx.globalAlpha = 1;
     }
 
-    // threat score label
-    ctx.fillStyle = color;
-    ctx.font = "11px monospace";
+    const [vx, vy] = worldToScreen(t.position.east_m + t.velocity.east_mps * 4, t.position.north_m + t.velocity.north_mps * 4);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(vx, vy); ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(x, y, isConfirmed ? 9 : 6, 0, 2 * Math.PI);
+    ctx.lineWidth = t.track_id === selected ? 3.5 : 2;
+    ctx.stroke();
+    if (!isConfirmed) { ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]); }
+
+    ctx.fillStyle = color; ctx.font = "11px monospace";
     ctx.fillText(t.threat_score.toFixed(2), x + 12, y - 8);
 
-    // sidebar entry
     const item = document.createElement("div");
-    item.className = "track-item";
-    item.innerHTML = `<span><span class="dot" style="background:${color}"></span>${t.track_id.slice(0,8)}</span><span>${t.threat_score.toFixed(2)}</span>`;
+    item.className = "track-item" + (t.track_id === selected ? " sel" : "");
+    item.innerHTML = `<span><span class="dot" style="background:${color}"></span>${t.track_id.slice(0, 8)}</span><span>${t.threat_score.toFixed(2)}</span>`;
+    item.onclick = () => { selected = t.track_id; draw(last); };
     listEl.appendChild(item);
   });
 
-  document.getElementById("stat-step").textContent = snapshot.step ?? 0;
-  document.getElementById("stat-confirmed").textContent = confirmed;
-  document.getElementById("stat-tentative").textContent = tentative;
-  document.getElementById("stat-threat").textContent = highThreat;
-  document.getElementById("timestamp").textContent = `t = ${((snapshot.step ?? 0) * dt).toFixed(1)}s`;
+  const sel = (snap.tracks || []).find(t => t.track_id === selected);
+  const box = $("inspect");
+  if (sel) {
+    const speed = Math.hypot(sel.velocity.east_mps, sel.velocity.north_mps);
+    const range = Math.hypot(sel.position.east_m, sel.position.north_m);
+    box.style.display = "block";
+    box.innerHTML = `<div><span>Track</span><b>${sel.track_id.slice(0, 8)}</b></div>
+      <div><span>Status</span><b>${sel.status}</b></div>
+      <div><span>Range to asset</span><b>${range.toFixed(0)} m</b></div>
+      <div><span>Speed</span><b>${speed.toFixed(1)} m/s</b></div>
+      <div><span>Threat score</span><b>${sel.threat_score.toFixed(3)}</b></div>
+      <div><span>Hits</span><b>${sel.hits}</b></div>`;
+  } else box.style.display = "none";
+
+  $("stat-step").textContent = snap.step ?? 0;
+  $("stat-confirmed").textContent = confirmed;
+  $("stat-tentative").textContent = tentative;
+  $("stat-threat").textContent = highThreat;
+  $("timestamp").textContent = `t = ${((snap.step ?? 0) * dt).toFixed(1)}s`;
 }
 
+canvas.addEventListener("click", e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  let best = null, bestD = 20;
+  (last.tracks || []).forEach(t => {
+    const [x, y] = worldToScreen(t.position.east_m, t.position.north_m);
+    const d = Math.hypot(x - mx, y - my);
+    if (d < bestD) { bestD = d; best = t.track_id; }
+  });
+  selected = best;
+  draw(last);
+});
+
 async function pollOnce() {
+  if (busy) return;
+  busy = true;
   try {
-    const res = await fetch(`${API_BASE}/simulate/step`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/simulate/step?${q}`, { method: "POST" });
     const data = await res.json();
-    document.getElementById("stat-conn").textContent = "connected";
-    document.getElementById("stat-conn").style.color = "#4da3ff";
+    $("stat-conn").textContent = "connected";
+    $("stat-conn").style.color = "#4da3ff";
+    (data.tracks || []).forEach(t => {
+      const tr = trails[t.track_id] = trails[t.track_id] || [];
+      tr.push([t.position.east_m, t.position.north_m]);
+      if (tr.length > 60) tr.shift();
+    });
     draw(data);
     if (data.done) stopPolling();
   } catch (err) {
-    document.getElementById("stat-conn").textContent = "offline";
-    document.getElementById("stat-conn").style.color = "#ff4d4f";
+    $("stat-conn").textContent = "offline";
+    $("stat-conn").style.color = "#ff4d4f";
     stopPolling();
-  }
+  } finally { busy = false; }
 }
+
+function interval() { return 200 / Number($("in-speed").value); }
 
 function startPolling() {
   if (polling) return;
   polling = true;
-  document.getElementById("btn-start").classList.add("active");
-  pollHandle = setInterval(pollOnce, POLL_INTERVAL_MS);
+  $("btn-start").classList.add("active");
+  pollHandle = setInterval(pollOnce, interval());
 }
 
 function stopPolling() {
   polling = false;
-  document.getElementById("btn-start").classList.remove("active");
+  $("btn-start").classList.remove("active");
   if (pollHandle) clearInterval(pollHandle);
 }
 
 async function resetSim() {
   stopPolling();
-  await fetch(`${API_BASE}/simulate/reset`, { method: "POST" });
-  document.getElementById("track-list").innerHTML = "";
-  draw({ step: 0, tracks: [] });
+  Object.keys(trails).forEach(k => delete trails[k]);
+  selected = null;
+  const p = new URLSearchParams({ sid, n_drones: $("in-drones").value, n_decoys: $("in-decoys").value, seed: $("in-seed").value });
+  try {
+    await fetch(`${API_BASE}/simulate/reset?${p}`, { method: "POST" });
+    $("stat-conn").textContent = "connected";
+    $("stat-conn").style.color = "#4da3ff";
+  } catch (e) {
+    $("stat-conn").textContent = "offline";
+    $("stat-conn").style.color = "#ff4d4f";
+  }
+  draw({ step: 0, tracks: [], truth: [] });
 }
 
-document.getElementById("btn-start").addEventListener("click", startPolling);
-document.getElementById("btn-stop").addEventListener("click", stopPolling);
-document.getElementById("btn-reset").addEventListener("click", resetSim);
+["drones", "decoys", "seed"].forEach(k => {
+  $("in-" + k).addEventListener("input", () => { $("v-" + k).textContent = $("in-" + k).value; });
+  $("in-" + k).addEventListener("change", resetSim);
+});
+$("in-speed").addEventListener("input", () => {
+  $("v-speed").textContent = $("in-speed").value + "x";
+  if (polling) { clearInterval(pollHandle); pollHandle = setInterval(pollOnce, interval()); }
+});
+$("tg-truth").addEventListener("change", () => draw(last));
+$("tg-trails").addEventListener("change", () => draw(last));
+$("btn-start").addEventListener("click", startPolling);
+$("btn-stop").addEventListener("click", stopPolling);
+$("btn-reset").addEventListener("click", resetSim);
 
-draw({ step: 0, tracks: [] });
+resizeCanvas();
+resetSim();
 </script>
 </body>
 </html>
