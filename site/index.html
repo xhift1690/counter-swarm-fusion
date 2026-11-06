@@ -40,6 +40,12 @@
   .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; }
   .card h3 { margin:0 0 6px; font-size:16px; }
   .card p { margin:0; color:var(--muted); font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; min-width:760px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; white-space:nowrap; }
+  th { color:var(--muted); font-weight:500; }
+  .note { color:var(--muted); font-size:13px; margin:12px 0; }
+  .rel { display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  tr.base td { background:#121a24; }
   details { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin-top:10px; }
   summary { cursor:pointer; font-weight:600; }
   details p { color:var(--muted); margin:8px 0 0; font-size:14px; }
@@ -53,6 +59,7 @@
   <span class="brand">Counter-Swarm Fusion</span>
   <a href="#how" class="hide">How it works</a>
   <a href="#results" class="hide">Results</a>
+  <a href="#benchmark" class="hide">Benchmark</a>
   <a href="#live">Live demo</a>
   <a href="#about">About</a>
 </div></nav>
@@ -83,9 +90,25 @@
     </details>
   </section>
 
+  <section id="benchmark">
+    <h2>Benchmark</h2>
+    <p class="lead" style="font-size:16px" id="bm-intro">Loading…</p>
+    <div class="pipeline" id="bm-tabs"></div>
+    <div style="overflow-x:auto"><table id="bm-table"></table></div>
+    <div id="bm-extra"></div>
+    <details>
+      <summary>How these are measured</summary>
+      <p>Each condition runs the same seeded random scenarios. At every step, confirmed tracks are matched to ground-truth targets with the Hungarian algorithm (50 m gate). Recall is the share of target-steps with a matched track. An ID switch is a target changing track ID; a fragmentation is a tracked target losing its track. Threat AUC pools the final score of each target across runs. Ground truth is used for scoring only, never by the tracker.</p>
+    </details>
+    <details>
+      <summary>How much to trust the threat-score results</summary>
+      <p>The score is calibrated on labelled trials from the same simulator, so these results show the method works, not how it would perform on real sensors. On the baseline the simulated classifier reports higher confidence when it is right, which flatters any score that learns from it. The &ldquo;uninformative classifier confidence&rdquo; condition is the fairer test.</p>
+    </details>
+  </section>
+
   <section id="live">
     <h2>Try it live</h2>
-    <p class="lead" style="font-size:16px">Press Start, change the number of drones and decoys, toggle ground truth, and click a track to inspect it. Each visitor gets their own simulation.</p>
+    <p class="lead" style="font-size:16px">Press Start, then switch a sensor off or raise the noise while it runs and watch the tracks degrade. You can also change the swarm size, show raw detections and ground truth, and click a track to inspect it. Each visitor gets their own simulation.</p>
     <div class="cta"><button class="btn primary" id="load-demo">Load embedded demo</button><a class="btn" href="/demo/">Open full screen</a></div>
     <div id="demo-slot"></div>
   </section>
@@ -152,6 +175,115 @@ fetch("/metrics").then(r => r.json()).then(m => {
   ];
   document.getElementById("metrics").innerHTML = items.map(([v, l]) => `<div class="metric"><b>${v}</b><span>${l}</span></div>`).join("");
 }).catch(() => { document.getElementById("metrics").innerHTML = '<div class="metric"><span>Metrics unavailable</span></div>'; });
+
+const BM_COLS = [
+  ["recall", "Recall", v => (v * 100).toFixed(1) + "%"],
+  ["rmse_m", "Position RMSE (m)", v => v.toFixed(1)],
+  ["id_switches_per_target", "ID switches / target", v => v.toFixed(2)],
+  ["fragmentations_per_target", "Fragmentations / target", v => v.toFixed(2)],
+  ["false_tracks_per_step", "False tracks / step", v => v.toFixed(2)],
+  ["acquisition_latency_s", "Time to first track (s)", v => v.toFixed(1)]
+];
+const TABS = [["swarm size", "Swarm size"], ["sensor ablation", "Sensor ablation"], ["stress", "Stress"], ["tracker", "Tracker: before vs after"], ["threat", "Threat score"]];
+const $ = id => document.getElementById(id);
+const arrow = (a, b, f) => (a == null ? "n/a" : f(a)) + ' → <b>' + (b == null ? "n/a" : f(b)) + "</b>";
+
+Promise.all([
+  fetch("/benchmark").then(r => r.json()),
+  fetch("/outputs/benchmark_v1.json").then(r => r.ok ? r.json() : null).catch(() => null)
+]).then(([bm, v1]) => {
+  const m = bm.meta;
+  $("bm-intro").textContent = `Mean ± std over ${m.n_seeds} random scenarios per condition (${m.duration_s} s each, 3 decoys). Click a tab to compare against the baseline.`;
+  const tabs = $("bm-tabs"), table = $("bm-table"), extra = $("bm-extra");
+  const base = bm.conditions.find(c => c.id === "baseline");
+  const v1by = v1 ? Object.fromEntries(v1.conditions.map(c => [c.id, c])) : {};
+  let picked = "baseline";
+
+  const cell = (met, fmt, key) => {
+    const x = met[key];
+    if (!x) return "n/a";
+    const bar = key === "recall" ? `<div style="height:4px;margin-top:4px;background:#1f2733;border-radius:2px"><div style="height:4px;width:${(x.mean * 100).toFixed(0)}%;background:var(--blue);border-radius:2px"></div></div>` : "";
+    return `${fmt(x.mean)} <span style="color:var(--muted)">± ${fmt(x.std).replace("%", "")}</span>${bar}`;
+  };
+
+  function renderGroup(g) {
+    const rows = [base, ...bm.conditions.filter(c => c.group === g)];
+    const head = BM_COLS.map(c => `<th>${c[1]}</th>`).join("");
+    const body = rows.map(c => {
+      const cells = BM_COLS.map(([k, , f]) => `<td>${cell(c.metrics, f, k)}</td>`).join("");
+      return `<tr${c.id === "baseline" ? ' class="base"' : ""}><td>${c.label}</td>${cells}</tr>`;
+    }).join("");
+    table.innerHTML = `<thead><tr><th>Condition</th>${head}</tr></thead><tbody>${body}</tbody>`;
+    extra.innerHTML = "";
+  }
+
+  function renderTracker() {
+    const cols = [
+      ["id_switches_per_target", "ID switches / target", v => v.toFixed(2)],
+      ["false_tracks_per_step", "False tracks / step", v => v.toFixed(2)],
+      ["rmse_m", "Position RMSE (m)", v => v.toFixed(1)],
+      ["recall", "Recall", v => (v * 100).toFixed(1) + "%"]
+    ];
+    const rows = bm.conditions.filter(c => v1by[c.id]);
+    table.innerHTML = `<thead><tr><th>Condition</th>${cols.map(c => `<th>${c[1]}</th>`).join("")}</tr></thead><tbody>` +
+      rows.map(c => `<tr${c.id === "baseline" ? ' class="base"' : ""}><td>${c.label}</td>${cols.map(([k, , f]) => {
+        const a = v1by[c.id].metrics[k], b = c.metrics[k];
+        return `<td>${arrow(a && a.mean, b && b.mean, f)}</td>`;
+      }).join("")}</tr>`).join("") + "</tbody>";
+    extra.innerHTML = '<p class="note">Left of each arrow is the original tracker (one fixed measurement noise for every detection); right is the current tracker, which carries each detection&rsquo;s own noise through fusion, gating and the Kalman update.</p>';
+  }
+
+  function reliabilitySvg(c) {
+    const S = 260, P = 34, W = S - P - 10;
+    const X = v => P + v * W, Y = v => S - P - v * W;
+    const line = (pts, col) => {
+      if (!pts || !pts.length) return "";
+      const d = pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+      const dots = pts.map(p => `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="${Math.min(7, 2 + Math.sqrt(p[2]) / 12).toFixed(1)}" fill="${col}" opacity=".8"/>`).join("");
+      return `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.5"/>${dots}`;
+    };
+    const ticks = [0, .5, 1].map(v => `<text x="${X(v)}" y="${S - P + 14}" fill="#7c8a9a" font-size="10" text-anchor="middle">${v}</text><text x="${P - 6}" y="${Y(v) + 3}" fill="#7c8a9a" font-size="10" text-anchor="end">${v}</text>`).join("");
+    return `<svg viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="Reliability diagram">
+      <rect x="${P}" y="${Y(1)}" width="${W}" height="${W}" fill="none" stroke="#1f2733"/>
+      <line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="#4a5666" stroke-dasharray="4 3"/>
+      ${line(c.metrics.reliability && c.metrics.reliability.naive, "#ffb347")}${line(c.metrics.reliability && c.metrics.reliability.calibrated, "#4da3ff")}
+      ${ticks}<text x="${P + W / 2}" y="${S - 4}" fill="#7c8a9a" font-size="10" text-anchor="middle">Predicted P(drone)</text>
+      <text transform="translate(10 ${P + W / 2}) rotate(-90)" fill="#7c8a9a" font-size="10" text-anchor="middle">Observed drone fraction</text></svg>`;
+  }
+
+  function renderThreat() {
+    const pct = v => (v * 100).toFixed(2) + "%";
+    const cols = [
+      ["brier", "Brier", v => v.toFixed(4)],
+      ["ece", "Calibration error (ECE)", v => v.toFixed(4)],
+      ["confident_wrong_rate", "Wrong when ≥90% sure", pct],
+      ["time_to_confident_s", "Time to settle ≥90% (s)", v => v.toFixed(0)]
+    ];
+    const rows = bm.conditions.filter(c => c.metrics.classification && c.metrics.classification.calibrated);
+    table.innerHTML = `<thead><tr><th>Condition</th>${cols.map(c => `<th>${c[1]}</th>`).join("")}<th>Unclassified</th></tr></thead><tbody>` +
+      rows.map(c => {
+        const n = c.metrics.classification.naive, k = c.metrics.classification.calibrated;
+        const u = c.metrics.unclassified_fraction;
+        return `<tr data-id="${c.id}" style="cursor:pointer"${c.id === picked ? ' class="base"' : ""}><td>${c.label}</td>${cols.map(([key, , f]) => `<td>${arrow(n[key], k[key], f)}</td>`).join("")}<td>${u ? (u.mean * 100).toFixed(0) + "%" : "n/a"}</td></tr>`;
+      }).join("") + "</tbody>";
+    [...table.querySelectorAll("tr[data-id]")].forEach(tr => tr.onclick = () => { picked = tr.dataset.id; renderThreat(); });
+    const sel = bm.conditions.find(c => c.id === picked) || base;
+    extra.innerHTML = `<p class="note">Each cell reads old score → <b>new score</b>, measured at every step on tracks that have received at least one classification vote. Click a row to see its reliability diagram: points on the dashed diagonal mean the score matches how often it is right.</p>
+      <div class="rel"><div>${reliabilitySvg(sel)}</div><div class="note"><b>${sel.label}</b><br><span style="color:#ffb347">●</span> old score<br><span style="color:#4da3ff">●</span> new score<br>Dot size shows how many samples fall in that bin.</div></div>`;
+  }
+
+  TABS.forEach(([id, label]) => {
+    if (id === "tracker" && !v1) return;
+    const b = document.createElement("button");
+    b.className = "stage"; b.textContent = label; b.dataset.id = id;
+    b.onclick = () => {
+      [...tabs.children].forEach(x => x.classList.toggle("on", x === b));
+      if (id === "tracker") renderTracker(); else if (id === "threat") renderThreat(); else renderGroup(id);
+    };
+    tabs.appendChild(b);
+  });
+  tabs.children[1].click();
+}).catch(() => { $("bm-intro").textContent = "Benchmark results unavailable."; });
 
 document.getElementById("load-demo").onclick = e => {
   document.getElementById("demo-slot").innerHTML = '<iframe src="/demo/" title="Live demo"></iframe>';

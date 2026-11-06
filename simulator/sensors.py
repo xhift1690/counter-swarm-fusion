@@ -48,6 +48,7 @@ class SyntheticSensor:
         self.can_classify = can_classify
         self.classification_accuracy = classification_accuracy
         self.rng = rng
+        self.confidence_informative = True
 
     def registration(self) -> NodeRegistration:
         return NodeRegistration(
@@ -67,11 +68,15 @@ class SyntheticSensor:
         true_class = ObjectClass.DRONE_MULTIROTOR if truth.is_threat else ObjectClass.BIRD
         if self.rng.random() < self.classification_accuracy:
             conf = self.rng.uniform(0.7, 0.97)
+            if not self.confidence_informative:
+                conf = self.rng.uniform(0.6, 0.97)
             return [ClassificationResult(object_class=true_class, confidence=conf)]
         else:
             # misclassify into the other bucket
             wrong_class = ObjectClass.BIRD if truth.is_threat else ObjectClass.DRONE_MULTIROTOR
             conf = self.rng.uniform(0.5, 0.8)
+            if not self.confidence_informative:
+                conf = self.rng.uniform(0.6, 0.97)
             return [ClassificationResult(object_class=wrong_class, confidence=conf)]
 
     def observe(self, truths: list[TargetTruth], timestamp: float, dt: float) -> list[DetectionReport]:
@@ -147,3 +152,32 @@ def build_default_sensor_suite(rng: np.random.Generator) -> list[SyntheticSensor
         max_range_m=800.0, can_classify=True, classification_accuracy=0.88, rng=rng,
     )
     return [radar, rf, eo]
+
+
+class SensorSuite:
+    KEYS = {"Radar-1": "radar", "RF-1": "rf", "EO-1": "eo"}
+
+    def __init__(self, rng: np.random.Generator):
+        self.sensors = build_default_sensor_suite(rng)
+        self.base = {s.name: (s.location_error_std_m, s.detection_probability) for s in self.sensors}
+        self.enabled = {k: True for k in self.KEYS.values()}
+
+    def configure(self, radar=None, rf=None, eo=None, noise=None, pd=None, uninformative_conf=None):
+        for key, val in (("radar", radar), ("rf", rf), ("eo", eo)):
+            if val is not None:
+                self.enabled[key] = bool(val)
+        for s in self.sensors:
+            if uninformative_conf is not None:
+                s.confidence_informative = not uninformative_conf
+            std, p = self.base[s.name]
+            if noise is not None:
+                s.location_error_std_m = std * float(np.clip(noise, 0.5, 4.0))
+            if pd is not None:
+                s.detection_probability = min(1.0, p * float(np.clip(pd, 0.3, 1.0)))
+
+    def observe(self, truths, timestamp: float, dt: float) -> dict[str, list[DetectionReport]]:
+        out = {}
+        for s in self.sensors:
+            key = self.KEYS[s.name]
+            out[key] = s.observe(truths, timestamp=timestamp, dt=dt) if self.enabled[key] else []
+        return out

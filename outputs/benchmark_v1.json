@@ -1,0 +1,649 @@
+{
+  "meta": {
+    "n_seeds": 40,
+    "duration_s": 120.0,
+    "dt_s": 0.5,
+    "match_gate_m": 50.0,
+    "n_decoys": 3,
+    "runtime_s": 446.5
+  },
+  "conditions": [
+    {
+      "id": "baseline",
+      "group": "baseline",
+      "label": "5 drones, 3 decoys, all sensors",
+      "params": {
+        "n_drones": 5
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9869791666666667,
+          "std": 0.012217471274561253,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 6.951163470147295,
+          "std": 0.6757763403220342,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.05625,
+          "std": 0.10572551544156508,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.15,
+          "std": 0.5712110391808366,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.040625,
+          "std": 0.06570317382959556,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.017499999999999998,
+          "std": 0.031011554688801464,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.0625,
+          "std": 0.08609215396514931,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "size_3",
+      "group": "swarm size",
+      "label": "3 drones",
+      "params": {
+        "n_drones": 3
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9898958333333333,
+          "std": 0.005542073205889345,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 7.597762406838376,
+          "std": 0.8285869846178149,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.10416666666666667,
+          "std": 0.2347560411584734,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.04583333333333334,
+          "std": 0.19240382212739632,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.0541666666666667,
+          "std": 0.08760423177279411,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.022291666666666668,
+          "std": 0.0483299254619402,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.0604166666666666,
+          "std": 0.13865899777445986,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 240
+      }
+    },
+    {
+      "id": "size_8",
+      "group": "swarm size",
+      "label": "8 drones",
+      "params": {
+        "n_drones": 8
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.987282196969697,
+          "std": 0.009664045874754062,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 6.698325605064693,
+          "std": 0.7451885757788197,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.08409090909090908,
+          "std": 0.11895479685871536,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.1409090909090909,
+          "std": 0.3432206017079177,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.059090909090909,
+          "std": 0.08375080849334429,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.03052083333333333,
+          "std": 0.0474921974023372,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.0863636363636364,
+          "std": 0.09915942542579334,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 440
+      }
+    },
+    {
+      "id": "size_12",
+      "group": "swarm size",
+      "label": "12 drones",
+      "params": {
+        "n_drones": 12
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9849583333333332,
+          "std": 0.008311593199449626,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 6.508448431545224,
+          "std": 0.6050181503536414,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.23499999999999996,
+          "std": 0.22795386147850832,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.2816666666666666,
+          "std": 0.41358346443164534,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.1283333333333334,
+          "std": 0.10501661786826895,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.08708333333333333,
+          "std": 0.10754065685819887,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.1391666666666667,
+          "std": 0.13626844212468386,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 0.99578125,
+        "threat_accuracy_at_0.5": 0.995,
+        "n_scored_targets": 600
+      }
+    },
+    {
+      "id": "no_radar",
+      "group": "sensor ablation",
+      "label": "No radar",
+      "params": {
+        "radar": false
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.6950651041666667,
+          "std": 0.08601350623423934,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 9.605171101817344,
+          "std": 0.8572578721346295,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.30625,
+          "std": 0.22279906435378738,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.190625,
+          "std": 0.1550111141590193,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.2864583333333335,
+          "std": 0.20084975004429118,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.05229166666666667,
+          "std": 0.05762659481697171,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 27.81108630952381,
+          "std": 3.1228966980968718,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 0.925,
+          "std": 0.08861469461982083,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 296
+      }
+    },
+    {
+      "id": "no_rf",
+      "group": "sensor ablation",
+      "label": "No RF",
+      "params": {
+        "rf": false
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9863541666666666,
+          "std": 0.012763318939964144,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 6.660281738796257,
+          "std": 0.8135681885748081,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.04375,
+          "std": 0.14308304026073954,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.1,
+          "std": 0.353779954788646,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.03125,
+          "std": 0.0928104630485273,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.0009375,
+          "std": 0.003831323795085978,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.153125,
+          "std": 0.2359641636741934,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 0.8167083333333334,
+        "threat_accuracy_at_0.5": 0.834375,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "no_eo",
+      "group": "sensor ablation",
+      "label": "No camera",
+      "params": {
+        "eo": false
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9871744791666668,
+          "std": 0.011391173311157445,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 7.115082323197771,
+          "std": 0.7373351874622476,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.165625,
+          "std": 0.32074070424405815,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.109375,
+          "std": 0.41038941403726065,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.103125,
+          "std": 0.1324313440898185,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.03666666666666667,
+          "std": 0.06139841168356846,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.09375,
+          "std": 0.22333787787186413,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "radar_only",
+      "group": "sensor ablation",
+      "label": "Radar only",
+      "params": {
+        "rf": false,
+        "eo": false
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9860026041666666,
+          "std": 0.014736200619431586,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 6.947022314191267,
+          "std": 0.7977019887728768,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.028125,
+          "std": 0.09167030878545417,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.1,
+          "std": 0.38522387763148314,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.01875,
+          "std": 0.05333433492649254,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.15625,
+          "std": 0.2508000020447389,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 0.5,
+        "threat_accuracy_at_0.5": 0.375,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "noise_2x",
+      "group": "stress",
+      "label": "2x sensor noise",
+      "params": {
+        "noise": 2.0
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9881770833333334,
+          "std": 0.00868819108628786,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 13.331100742347672,
+          "std": 0.7227940807385689,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 12.290625,
+          "std": 2.2725697607131212,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.065625,
+          "std": 0.24512473930738368,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 5.33125,
+          "std": 0.6641881008670159,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 4.996875,
+          "std": 0.7753122647720613,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.08125,
+          "std": 0.0992762269164639,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 0.9996666666666667,
+        "threat_accuracy_at_0.5": 0.984375,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "noise_3x",
+      "group": "stress",
+      "label": "3x sensor noise",
+      "params": {
+        "noise": 3.0
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9831901041666666,
+          "std": 0.006870250864706416,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 19.978301604830754,
+          "std": 0.8261936966561664,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 18.515625,
+          "std": 2.1752518827035017,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.415625,
+          "std": 0.24249553921353179,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 10.884375,
+          "std": 1.074689691349232,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 8.562291666666667,
+          "std": 0.9606266456591901,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.428125,
+          "std": 0.19842630066317266,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 0.988875,
+        "threat_accuracy_at_0.5": 0.96875,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "pd_70",
+      "group": "stress",
+      "label": "70% detection probability",
+      "params": {
+        "pd": 0.7
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9772005208333333,
+          "std": 0.013068815172395647,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 7.766398867930913,
+          "std": 0.7487442768251886,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 0.33125,
+          "std": 0.25718832270018277,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 0.35,
+          "std": 0.43412157106222954,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 1.309375,
+          "std": 0.2210615052481189,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.020937500000000005,
+          "std": 0.0489789577398504,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 1.725,
+          "std": 0.279078152825719,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 320
+      }
+    },
+    {
+      "id": "pd_50",
+      "group": "stress",
+      "label": "50% detection probability",
+      "params": {
+        "pd": 0.5
+      },
+      "metrics": {
+        "recall": {
+          "mean": 0.9349869791666666,
+          "std": 0.02157883799644041,
+          "n": 40
+        },
+        "rmse_m": {
+          "mean": 8.679632458355462,
+          "std": 0.7450293304473246,
+          "n": 40
+        },
+        "id_switches_per_target": {
+          "mean": 1.6875,
+          "std": 0.45202535667473687,
+          "n": 40
+        },
+        "fragmentations_per_target": {
+          "mean": 1.678125,
+          "std": 0.5582191090583953,
+          "n": 40
+        },
+        "tracks_per_target": {
+          "mean": 2.64375,
+          "std": 0.4316690179126144,
+          "n": 40
+        },
+        "false_tracks_per_step": {
+          "mean": 0.015312500000000001,
+          "std": 0.02146245603911093,
+          "n": 40
+        },
+        "acquisition_latency_s": {
+          "mean": 2.4703125,
+          "std": 0.6907683819718816,
+          "n": 40
+        },
+        "acquired_fraction": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 40
+        },
+        "threat_auc": 1.0,
+        "threat_accuracy_at_0.5": 1.0,
+        "n_scored_targets": 320
+      }
+    }
+  ]
+}

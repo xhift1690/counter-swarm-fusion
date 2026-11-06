@@ -23,14 +23,13 @@ from tracker.kalman import KalmanTrack
 GATE_THRESHOLD_SQ = 9.21
 
 
-def associate(tracks: list[KalmanTrack], detections_xy: list[np.ndarray], R: np.ndarray
+def associate(tracks: list[KalmanTrack], detections_xy: list[np.ndarray], R: np.ndarray | list[np.ndarray]
               ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
     """
     Args:
         tracks: list of KalmanTrack (already predicted to current timestep)
         detections_xy: list of [east, north] measurement vectors
-        R: measurement covariance (2x2), assumed shared across detections in this call
-           (in practice this varies by sensor; pass per-detection R in a future iteration)
+        R: measurement covariance (2x2), either shared or one per detection
 
     Returns:
         matches: list of (track_index, detection_index)
@@ -43,10 +42,11 @@ def associate(tracks: list[KalmanTrack], detections_xy: list[np.ndarray], R: np.
     if n_tracks == 0 or n_dets == 0:
         return [], list(range(n_tracks)), list(range(n_dets))
 
+    Rs = R if isinstance(R, list) else [R] * n_dets
     cost = np.full((n_tracks, n_dets), 1e6)
     for i, trk in enumerate(tracks):
         for j, z in enumerate(detections_xy):
-            d2 = trk.mahalanobis_distance_sq(z, R)
+            d2 = trk.mahalanobis_distance_sq(z, Rs[j])
             if d2 < GATE_THRESHOLD_SQ:
                 cost[i, j] = d2
 
